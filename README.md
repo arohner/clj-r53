@@ -10,7 +10,7 @@ Installation
 
 Account Ids
 ===========
-Almost all fns take an argument called account-id. This is a map containing :user and :password. These are your AWS account id and secret. To view. go to aws.amazon.com, click on Account, click on Security Credentials. :user is the value in "Access Key ID" and :password is the value in "Secret Access Key".
+Almost all fns take an argument called account-id. This is a map containing :user and :password. These are your AWS account id and secret. This is the same as your S3 credentials. To find it, go to aws.amazon.com, click on Account, click on Security Credentials. :user is the value in "Access Key ID" and :password is the value in "Secret Access Key".
 
 Usage
 =====
