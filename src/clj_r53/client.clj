@@ -1,8 +1,11 @@
 (ns clj-r53.client
+  (:refer-clojure :exclude [find])
   (:require [clojure.zip :as zip])
   (:require [clojure.contrib.zip-filter :as zf])
   (:require [clojure.contrib.zip-filter.xml :as zf-xml])
-  (:use [clj-r53.core :only (endpoint r53-fn require-arg)]))
+  (:use [clj-r53.core :only (endpoint r53-fn require-arg)])
+  (:use [arohner.map :only (submap?)])
+  (:use [arohner.utils :only (inspect)]))
 
 (defn- create-hosted-zone-request [{:keys [name ref comment]}]
   [:CreateHostedZoneRequest {:xmlns "https://route53.amazonaws.com/doc/2011-05-05/"}
@@ -82,61 +85,76 @@
 
 (defn create-A-name
   "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
-  [& {:keys [name ip ttl comment]}]
+  [& {:keys [name value ttl comment]}]
   (require-arg "name" name)
-  (require-arg "ip" ip)
+  (require-arg "value" value)
   (require-arg "ttl" ttl)
   (change {:action "CREATE"
            :type "A"
            :name name
            :ttl ttl
-           :value ip}))
+           :value value}))
 
-(defn delete-A-name
-  "Returns the XML to create a new A name record. For use inside with-r53-transaction"
-  [& {:keys [name ip ttl comment]}]
+(defn delete [{:keys [name value ttl] :as row} row]
   (require-arg "name" name)
-  (require-arg "ip" ip)
+  (require-arg "value" value)
   (require-arg "ttl" ttl)
-  (change {:action "DELETE"
-           :type "A"
-           :name name
-           :ttl ttl
-           :value ip}))
+  (change (merge row {:action "DELETE"})))
 
 (defn create-CNAME
-  [& {:keys [name ip ttl comment]}]
+  [& {:keys [name value ttl comment]}]
   (require-arg "name" name)
-  (require-arg "ip" ip)
+  (require-arg "value" value)
   (require-arg "ttl" ttl)
   (change {:action "CREATE"
            :type "CNAME"
            :name name
            :ttl ttl
-           :value ip}))
+           :value value}))
 
 (defn get-change [account change-id]
   (r53-fn account
           {:method :get
            :url (str endpoint "/change/" change-id)}))
 
-(defn synced?
-  "true if the given change-id has taken effect"
-  [account change-id]
-  (-> (get-change account change-id)
-      :body
+(defn change-id
+  "Returns the change-id from a response or nil"
+  [resp]
+  (-> resp
+      (zip/xml-zip)
+      (zf-xml/xml1->
+       :ChangeInfo
+       :Id
+       zf-xml/text)
+      (#(re-find #"/change/(.*)" %))
+      (get 1)))
+
+(defn change-status [change-resource-record-set-response]
+  (-> change-resource-record-set-response
       (clojure.zip/xml-zip)
       (zf-xml/xml1->
        :ChangeInfo
        :Status
        zf-xml/text)
-      (= "INSYNC")))
+      (.toLowerCase)
+      (keyword)))
+
+(defn *error? [resp]
+  (= :tag :ErrorResponse))
+
+(defn synced?
+  "true if the given change-id has taken effect"
+  [account change-id]
+  (-> (get-change account change-id)
+      :body
+      (change-status)
+      (= :insync)))
 
 (defn parse-resource-record [rr]
   {:name (zf-xml/xml1-> rr :Name zf-xml/text)
    :type (zf-xml/xml1-> rr :Type zf-xml/text)
    :ttl (zf-xml/xml1-> rr :TTL zf-xml/text)
-   :value (zf-xml/xml-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
+   :value (zf-xml/xml1-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
 
 (defn parse-resource-record-sets [body]
   (map parse-resource-record
@@ -161,3 +179,40 @@
                       :query-params query-params})]
     (when (= 200 (-> resp :status))
       (parse-resource-record-sets-response (-> resp :body)))))
+
+(defn find
+  "Filters the list of rows returned by list-resource-record-sets. match is a map. Returns all rows where all the values in match are = to the values in row.
+
+  examples:
+  (find-by-name credentials zone-id {:name \"foo.bar.com\"})
+  (find-by-name credentials zone-id {:name \"foo.bar.com\" :type \"A\"}) "
+  [credentials zone-id match]
+  (filter #(submap? match %)
+          (-> (list-resource-record-sets credentials zone-id) :rows)))
+
+(defn block-until-sync [credentials change-id]
+  (loop []
+    (let [resp-body (-> (get-change credentials change-id)
+                        :body)
+          resp-status (change-status resp-body)]
+      (if (= :pending resp-status)
+        (do
+          (Thread/sleep 5000)
+          (recur))
+        (if (= :insync resp-status)
+          :insync
+          resp-body)))))
+
+(defn update-record
+  "finds a single record using find-map. Deletes the original record, and creates a new record by merging merge-map into the old record."
+  [credentials zone-id find-map merge-map]
+  (let [old-rows (find credentials zone-id find-map)]
+    (when (> (count old-rows) 1)
+      (throw (Exception. (str "find should only return one row"))))
+    (when (= (count old-rows) 0)
+      (throw (Exception. (str "Couldn't find row to update"))))
+    (let [old-row (first old-rows)
+          resp (apply with-r53-transaction credentials zone-id
+                      [(change (merge old-row {:action "DELETE"}))
+                       (change (merge {:action "CREATE"} old-row merge-map))])]
+      (block-until-sync credentials (change-id (-> resp :body))))))
