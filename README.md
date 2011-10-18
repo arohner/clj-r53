@@ -5,7 +5,7 @@ A Clojure client for Amazon's route53 DNS service.
 
 Installation
 ===========
-[clj-r53 "1.0.0"]
+[clj-r53 "1.0.1"]
 
 
 Account Ids
@@ -31,9 +31,9 @@ r53-transaction
 To make changes (add/delete records), use a with-r53-transaction block. It looks like
 
 ```clojure
-(clj-r53.client/with-r53-transaction
-   (client/create-A-name :name "foo.bar.com" :ip "1.2.3.4" :ttl 300)
-   (client/create-CNAME :name "baz.bar.com" :ip "4.5.6.7" :ttl 300))
+(clj-r53.client/with-r53-transaction account-ids zone-id
+   (client/create-A-name :name "foo.bar.com" :value "1.2.3.4" :ttl 300)
+   (client/create-CNAME :name "baz.bar.com" :value "4.5.6.7" :ttl 300))
    ```
 
 Any number of actions can be included, subject to r53 limitations.
