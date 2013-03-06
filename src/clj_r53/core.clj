@@ -7,11 +7,9 @@
   (:require [clojure.xml :as xml])
   (:require [clojure.java.io :as io])
   (:require [clojure.zip :as zip])
-  (:require [clojure.contrib.zip-filter :as zf])
-  (:require [clojure.contrib.zip-filter.xml :as zf-xml])
-  (:use [clojure.pprint :only (pprint)])
-  (:use clojure.contrib.prxml)
-  (:use [clojure.contrib.except :only (throwf)]))
+  (:require [clojure.data.zip.xml :as zf-xml])
+  (:use [clojure.pprint :only (pprint)]
+        [clojure.data.xml :only [emit-str sexp-as-element]]))
 
 (def algo "HmacSHA1")
 
@@ -46,10 +44,8 @@
         body (:body args)
         body (when body
                (if (vector? body)
-                 (with-out-str
-                   (prxml
-                    [:decl! {:version "1.0"
-                             :encoding "UTF-8"}]
+                 (emit-str
+                   (sexp-as-element
                     body))
                  body))
         request-map (merge 
@@ -74,7 +70,7 @@
 
 (defn require-arg [name value]
   (when (not value)
-    (throwf "%s is required" name)))
+    (throw (Exception. (format "%s is required" name)))))
 
 (defn create-hosted-zone
   "Create a new hosted zone. name is required. Returns the whole response, with the body parsed."
@@ -126,6 +122,3 @@
   "sanity check. Returns the date according to AWS"
   (get-in (http/get "https://route53.amazonaws.com/date")
           [:headers "date"]))
-
-
-
