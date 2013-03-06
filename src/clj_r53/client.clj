@@ -1,8 +1,8 @@
 (ns clj-r53.client
   (:refer-clojure :exclude [find])
   (:require [clojure.zip :as zip])
-  (:require [clojure.contrib.zip-filter :as zf])
-  (:require [clojure.contrib.zip-filter.xml :as zf-xml])
+  (:require [clojure.data.zip :as zf])
+  (:require [clojure.data.zip.xml :as zf-xml])
   (:use [clj-r53.core :only (endpoint r53-fn require-arg)])
   (:use [arohner.map :only (submap?)])
   (:use [arohner.utils :only (inspect)]))
