@@ -72,16 +72,21 @@
      [:Changes
       exprs]]]))
 
-(defn change [{:keys [action type name ttl value]}]
+(defn change [{:keys [action type name ttl value alias-zone-id]}]
   [:Change
    [:Action action]
    [:ResourceRecordSet
     [:Name name]
     [:Type type]
-    [:TTL ttl]
-    [:ResourceRecords
-     [:ResourceRecord
-      [:Value value]]]]])
+    (when-not alias-zone-id
+      [:TTL ttl])
+    (if alias-zone-id
+      [:AliasTarget
+       [:HostedZoneId alias-zone-id]
+       [:DNSName value]]
+      [:ResourceRecords
+           [:ResourceRecord
+            [:Value value]]])]])
 
 (defn create-A-name
   "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
