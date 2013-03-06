@@ -1,11 +1,11 @@
 (ns clj-r53.client
   (:refer-clojure :exclude [find])
-  (:require [clojure.zip :as zip])
-  (:require [clojure.data.zip :as zf])
-  (:require [clojure.data.zip.xml :as zf-xml])
-  (:use [clj-r53.core :only (endpoint r53-fn require-arg)])
-  (:use [arohner.map :only (submap?)])
-  (:use [arohner.utils :only (inspect)]))
+  (:require [clojure.zip :as zip]
+            [clojure.data.zip :as zf]
+            [clojure.data.zip.xml :as zf-xml]
+            [clj-r53.core :refer (endpoint r53-fn require-arg)]
+            [arohner.map :refer (submap?)]
+            [arohner.utils :refer (inspect)]))
 
 (defn- create-hosted-zone-request [{:keys [name ref comment]}]
   [:CreateHostedZoneRequest {:xmlns "https://route53.amazonaws.com/doc/2011-05-05/"}
