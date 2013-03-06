@@ -100,7 +100,7 @@
            :ttl ttl
            :value value}))
 
-(defn delete [{:keys [name value ttl] :as row} row]
+(defn delete [{:keys [name value ttl] :as row}]
   (require-arg "name" name)
   (require-arg "value" value)
   (require-arg "ttl" ttl)
@@ -158,7 +158,9 @@
 (defn parse-resource-record [rr]
   {:name (zf-xml/xml1-> rr :Name zf-xml/text)
    :type (zf-xml/xml1-> rr :Type zf-xml/text)
+   :AliasTarget (zf-xml/xml1-> rr :AliasTarget zf-xml/text)
    :ttl (zf-xml/xml1-> rr :TTL zf-xml/text)
+
    :value (zf-xml/xml1-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
 
 (defn parse-resource-record-sets [body]
