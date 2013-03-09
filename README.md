@@ -5,7 +5,7 @@ A Clojure client for Amazon's route53 DNS service.
 
 Installation
 ===========
-[clj-r53 "1.0.1"]
+[clj-r53 "1.0.2"]
 
 
 Account Ids
