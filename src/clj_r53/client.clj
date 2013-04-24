@@ -93,34 +93,51 @@
             [[:ResourceRecord
               [:Value value]]])])]])
 
+(defn create-r53-entry
+  [type & {:keys [name value ttl comment]}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (change {:action "CREATE"
+           :type type
+           :name name
+           :ttl ttl
+           :value value}))
+
 (defn create-A-name
   "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
   [& {:keys [name value ttl comment]}]
   (require-arg "name" name)
   (require-arg "value" value)
   (require-arg "ttl" ttl)
-  (change {:action "CREATE"
-           :type "A"
-           :name name
-           :ttl ttl
-           :value value}))
-
-(defn delete [{:keys [name value ttl] :as row}]
-  (require-arg "name" name)
-  (require-arg "value" value)
-  (require-arg "ttl" ttl)
-  (change (merge row {:action "DELETE"})))
+  (create-r53-entry "A" :name name :value value :ttl ttl :comment comment))
 
 (defn create-CNAME
   [& {:keys [name value ttl comment]}]
   (require-arg "name" name)
   (require-arg "value" value)
   (require-arg "ttl" ttl)
-  (change {:action "CREATE"
-           :type "CNAME"
-           :name name
-           :ttl ttl
-           :value value}))
+  (create-r53-entry "CNAME" :name name :value value :ttl ttl :comment comment))
+
+(defn create-TXT
+  [& {:keys [name value ttl comment]}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create-r53-entry "TXT" :name name :value value :ttl ttl :comment comment))
+
+(defn create-MX
+  [& {:keys [name value ttl comment]}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create-r53-entry "MX" :name name :value value :ttl ttl :comment comment))
+
+(defn delete [{:keys [name value ttl] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (change (merge row {:action "DELETE"})))
 
 (defn get-change [account change-id]
   (r53-fn account
