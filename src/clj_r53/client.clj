@@ -84,9 +84,14 @@
       [:AliasTarget
        [:HostedZoneId alias-zone-id]
        [:DNSName value]]
-      [:ResourceRecords
-           [:ResourceRecord
-            [:Value value]]])]])
+      `[:ResourceRecords
+        ~@(if (sequential? value)
+            (map (fn [val]
+                   [:ResourceRecord
+                    [:Value val]])
+                 value)
+            [[:ResourceRecord
+              [:Value value]]])])]])
 
 (defn create-A-name
   "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
@@ -161,7 +166,7 @@
    :AliasTarget (zf-xml/xml1-> rr :AliasTarget zf-xml/text)
    :ttl (zf-xml/xml1-> rr :TTL zf-xml/text)
 
-   :value (zf-xml/xml1-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
+   :value (zf-xml/xml-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
 
 (defn parse-resource-record-sets [body]
   (map parse-resource-record
