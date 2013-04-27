@@ -245,7 +245,7 @@
           resp (apply with-r53-transaction credentials zone-id
                       [(change (merge old-row {:action "DELETE"}))
                        (change (merge {:action "CREATE"} old-row merge-map))])]
-      (println "update-record: resp=" resp)
       (if (= 200 (-> resp :status))
-        (block-until-sync credentials (change-id (-> resp :body)))
+        (do (block-until-sync credentials (change-id (-> resp :body)))
+            resp)
         resp))))
