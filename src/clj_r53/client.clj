@@ -210,15 +210,30 @@
     (when (= 200 (-> resp :status))
       (parse-resource-record-sets-response (-> resp :body)))))
 
+(defn list-all-resource-record-sets
+  "returns a sequence of all the entries"
+  [account zone-id]
+  (loop [results []] ; Amazon pagenates the entries in groups of 100, so loop until we have them all
+    (let [last-name  (-> results last :name)  ; start the search at the last found name
+          result-set (if last-name            ; which will then be the first in the next batch
+                       (list-resource-record-sets account zone-id :name last-name :maxitems 100)
+                       (list-resource-record-sets account zone-id :maxitems 100))
+          more?      (:truncated? result-set)
+          new-rows   (:rows result-set)
+          new-result (concat (butlast results) new-rows)] ; don't count it twice.
+      (if more?
+        (recur new-result)
+        new-result))))
+
 (defn find
   "Filters the list of rows returned by list-resource-record-sets. match is a map. Returns all rows where all the values in match are = to the values in row.
 
   examples:
-  (find-by-name credentials zone-id {:name \"foo.bar.com\"})
-  (find-by-name credentials zone-id {:name \"foo.bar.com\" :type \"A\"}) "
+  (find credentials zone-id {:name \"foo.bar.com\"})
+  (find credentials zone-id {:name \"foo.bar.com\" :type \"A\"})"
   [credentials zone-id match]
   (filter #(submap? match %)
-          (-> (list-resource-record-sets credentials zone-id) :rows)))
+          (list-all-resource-record-sets credentials zone-id)))
 
 (defn block-until-sync [credentials change-id]
   (loop []
