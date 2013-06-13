@@ -84,38 +84,61 @@
       [:AliasTarget
        [:HostedZoneId alias-zone-id]
        [:DNSName value]]
-      [:ResourceRecords
-           [:ResourceRecord
-            [:Value value]]])]])
-
-(defn create-A-name
-  "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
-  [& {:keys [name value ttl comment]}]
+      `[:ResourceRecords
+        ~@(if (sequential? value)
+            (map (fn [val]
+                   [:ResourceRecord
+                    [:Value val]])
+                 value)
+            [[:ResourceRecord
+              [:Value value]]])])]])
+(defn create [type {:keys [name value ttl] :as row}]
   (require-arg "name" name)
   (require-arg "value" value)
   (require-arg "ttl" ttl)
-  (change {:action "CREATE"
-           :type "A"
-           :name name
-           :ttl ttl
-           :value value}))
+  (change (merge row {:type type :action "CREATE"})))
+
+(defn create-A-name
+  "Returns the XML to create a new A name record. For use inside (with-r53-transaction)"
+  [& {:keys [name value ttl comment] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create "A" row))
+
+(defn create-CNAME
+  [& {:keys [name value ttl comment] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create "CNAME" row))
+
+(defn create-TXT
+  [& {:keys [name value ttl comment] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create "TXT" row))
+
+(defn create-MX
+  [& {:keys [name value ttl comment] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create "MX" row))
+
+(defn create-AAAA
+  [& {:keys [name value ttl comment] :as row}]
+  (require-arg "name" name)
+  (require-arg "value" value)
+  (require-arg "ttl" ttl)
+  (create "AAAA" row))
 
 (defn delete [{:keys [name value ttl] :as row}]
   (require-arg "name" name)
   (require-arg "value" value)
   (require-arg "ttl" ttl)
   (change (merge row {:action "DELETE"})))
-
-(defn create-CNAME
-  [& {:keys [name value ttl comment]}]
-  (require-arg "name" name)
-  (require-arg "value" value)
-  (require-arg "ttl" ttl)
-  (change {:action "CREATE"
-           :type "CNAME"
-           :name name
-           :ttl ttl
-           :value value}))
 
 (defn get-change [account change-id]
   (r53-fn account
@@ -161,7 +184,7 @@
    :AliasTarget (zf-xml/xml1-> rr :AliasTarget zf-xml/text)
    :ttl (zf-xml/xml1-> rr :TTL zf-xml/text)
 
-   :value (zf-xml/xml1-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
+   :value (zf-xml/xml-> rr :ResourceRecords :ResourceRecord :Value zf-xml/text)})
 
 (defn parse-resource-record-sets [body]
   (map parse-resource-record
@@ -187,15 +210,30 @@
     (when (= 200 (-> resp :status))
       (parse-resource-record-sets-response (-> resp :body)))))
 
+(defn list-all-resource-record-sets
+  "returns a sequence of all the entries"
+  [account zone-id]
+  (loop [results []] ; Amazon pagenates the entries in groups of 100, so loop until we have them all
+    (let [last-name  (-> results last :name)  ; start the search at the last found name
+          result-set (if last-name            ; which will then be the first in the next batch
+                       (list-resource-record-sets account zone-id :name last-name :maxitems 100)
+                       (list-resource-record-sets account zone-id :maxitems 100))
+          more?      (:truncated? result-set)
+          new-rows   (:rows result-set)
+          new-result (concat (butlast results) new-rows)] ; don't count it twice.
+      (if more?
+        (recur new-result)
+        new-result))))
+
 (defn find
   "Filters the list of rows returned by list-resource-record-sets. match is a map. Returns all rows where all the values in match are = to the values in row.
 
   examples:
-  (find-by-name credentials zone-id {:name \"foo.bar.com\"})
-  (find-by-name credentials zone-id {:name \"foo.bar.com\" :type \"A\"}) "
+  (find credentials zone-id {:name \"foo.bar.com\"})
+  (find credentials zone-id {:name \"foo.bar.com\" :type \"A\"})"
   [credentials zone-id match]
   (filter #(submap? match %)
-          (-> (list-resource-record-sets credentials zone-id) :rows)))
+          (list-all-resource-record-sets credentials zone-id)))
 
 (defn block-until-sync [credentials change-id]
   (loop []
@@ -222,7 +260,7 @@
           resp (apply with-r53-transaction credentials zone-id
                       [(change (merge old-row {:action "DELETE"}))
                        (change (merge {:action "CREATE"} old-row merge-map))])]
-      (println "update-record: resp=" resp)
       (if (= 200 (-> resp :status))
-        (block-until-sync credentials (change-id (-> resp :body)))
+        (do (block-until-sync credentials (change-id (-> resp :body)))
+            resp)
         resp))))
