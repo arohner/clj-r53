@@ -36,6 +36,27 @@ To make changes (add/delete records), use a with-r53-transaction block. It looks
    (client/create-CNAME :name "baz.bar.com" :value "4.5.6.7" :ttl 300))
    ```
 
+```clojure
+  (let [account {:user (System/getenv "AWS_KEY")
+                 :password (System/getenv "AWS_SECRET")}
+        zone-id (get (clj-r53.client/list-hosted-zones account) "example.com.")]
+    (with-r53-transaction account zone-id
+      (create-A-name :name "www.example.com" :value "1.2.3.4" :ttl (str 600) :comment "comment")
+      (create-A-name :name "www2.example.com" :value ["1.2.3.4" "2.3.4.5"] :ttl (str 600) :comment "comment")
+      (create-CNAME  :name "foo.example.com" :value "foo2.example.com" :ttl (str 600) :comment "comment")
+      (create-TXT    :name "smtpapi._domainkey.mail.example.com" :value "\"k=rsa; t=s; p=12345ABCDEF\"" :ttl (str 600) :comment "comment")
+      (create-MX     :name "example.com" :value ["10 mail1.example.com" "20 mail2.example.com"] :ttl (str 600) :comment "comment")
+      (create-AAAA   :name "example.com" :value ["10 mail1.example.com" "20 mail2.example.com"] :ttl (str 600) :comment "comment")
+      (create-AAAA   :name "aaaa.example.com" :value ["2001:1234:abcd::1"] :ttl (str 600) :comment "comment")))
+
+(let [account {:user (System/getenv "AWS_KEY")
+               :password (System/getenv "AWS_SECRET")}
+      zone-id (get (clj-r53.client/list-hosted-zones account) "example.com.")]
+  (update-record account zone-id {:name "foo.example.com."} {:value "1.2.3.4"  :comment "my new comment"}))
+
+   ```
+
+
 Any number of actions can be included, subject to r53 limitations.
 
 Viewing records
