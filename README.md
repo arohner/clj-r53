@@ -1,11 +1,13 @@
 Introduction
 ============
-A Clojure client for Amazon's route53 DNS service. 
+A Clojure client for Amazon's route53 DNS service.
 
 
 Installation
 ===========
-[clj-r53 "1.0.2"]
+```clojure
+[clj-r53 "1.0.3"]
+```
 
 
 Account Ids
@@ -14,7 +16,7 @@ Almost all fns take an argument called account-id. This is a map containing :use
 
 Usage
 =====
-It's expected you've read the r53 documentation and are familiar with its concepts. 
+It's expected you've read the r53 documentation and are familiar with its concepts.
 
 Create a hosted DNS with
 ```clojure
