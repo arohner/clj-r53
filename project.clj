@@ -1,4 +1,4 @@
-(defproject clj-r53 "1.0.3-SNAPSHOT"
+(defproject clj-r53 "1.0.3"
   :description "simple clojure bindings for Amazon's Route 53 DNS service"
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/data.zip "0.1.1"]

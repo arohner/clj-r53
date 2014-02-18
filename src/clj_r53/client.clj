@@ -4,8 +4,7 @@
             [clojure.data.zip :as zf]
             [clojure.data.zip.xml :as zf-xml]
             [clj-r53.core :refer (endpoint r53-fn require-arg)]
-            [arohner.map :refer (submap?)]
-            [arohner.utils :refer (inspect)]))
+            [arohner.map :refer (submap?)]))
 
 (defn- create-hosted-zone-request [{:keys [name ref comment]}]
   [:CreateHostedZoneRequest {:xmlns "https://route53.amazonaws.com/doc/2011-05-05/"}
